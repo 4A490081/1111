@@ -1,0 +1,262 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Audio/Video Example - Record Plugin for Video.js</title>
+  <link href="../static/css/video-js.min.css" rel="stylesheet">
+  <link href="../static/css/videojs.record.css" rel="stylesheet">
+
+  <script src="../static/js/video.min.js"></script>
+  <script src="../static/js/RecordRTC.js"></script>
+  <script src="../static/js/adapter.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/2.0.2/anime.min.js"></script>
+  <script src="../static/js/videojs.record.js"></script>
+</head>
+<script>
+    function time(){
+        for (var i=60;i>0;i--)
+        {
+            document.getElementById("timer").innerHTML=i;
+        }
+    }
+</script>
+<style>
+    .container  {   
+                    color: blue;
+                    border-radius: 50px;
+    }
+    
+    p   {
+            color: red;
+            font-family:Microsoft JhengHei;
+    }
+    
+    .container {
+            margin: 20px auto;
+            width: 75%;
+            height: 70%;
+            line-height: 50px;
+            border: 1px solid #ccc;
+            font-size: 24px;
+            font-weight: 900;
+            text-align: center;
+            background-color:lightblue;
+            position: center;
+    }
+
+    .button {
+            background-color: #4CAF50; /* Green */
+            border: none;
+            color: white;
+            padding: 16px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            -webkit-transition-duration: 0.4s; /* Safari */
+            transition-duration: 0.4s;
+            cursor: pointer;
+            display: none;
+            
+    }
+    
+    .button1 {
+        background-color: white;
+        color: black;
+        border: 2px solid #555555;
+        
+    }
+
+    .button1:hover {
+        background-color: #555555;
+        color: white;
+    }
+
+    
+    </style>
+<body>
+    
+    <div id="container" class='container'>
+            <p id='inputid'>請輸入面試ID：</p>
+        <input id="interviewID">
+        
+        <button id='submit' type="button" onclick="myFunction()">確定</button>
+        <p id='show_id'></p>
+    <p id="total_time"></p>
+    <p id="questions"></p>
+    
+    <button id='next' type="button" class="button button1" onclick="nextQlist()"  >下一題</button>
+    <video id="myVideo" class="video-js vjs-default-skin" style="margin: 20px auto;"  ></video>
+</div>
+
+<script>
+    var list_q=[];
+    var list_t=[];
+    var total_t = [];
+    var c;
+    var t
+    var count =0
+    
+    function myFunction() {
+    var x, text;
+    
+    // 获取 id="numb" 的值
+    id = document.getElementById("interviewID").value;
+    console.log(id)
+    // 如果输入的值 x 不是数字或者小于 1 或者大于 10，则提示错误 Not a Number or less than one or greater than 10
+    var count = 1;
+    var data = {"InterviewID":id};
+    var json = JSON.stringify(data);
+    var request = new XMLHttpRequest();
+    var formData = new FormData();
+    formData.append('interviewID', id);
+    request.open('POST', 'http://163.18.26.125:3004/v2/Session/ConnectInterview');
+    request.setRequestHeader('content-type' , 'application/json');
+    request.onreadystatechange = function () {
+        if (request.readyState == 4) {
+            var result =JSON.parse(request.responseText);
+            total_t_s = '總時間:' + result['TotalTime'];
+            
+            total_t.push(result['TotalTime']);
+            for (i=0;i<result['QuestionList'].length;i++)
+            {list_q.push(result['QuestionList'][i]['Content']);
+            list_t.push(result['QuestionList'][i]['Time']);
+            }
+            c=list_t[0];
+            document.getElementById("total_time").textContent ='計時' + list_t[0] + '秒';
+            
+            document.getElementById("questions").append('問題1:'+list_q[0]) ;
+            console.log(result);
+        }
+    }
+    request.send(json);
+    console.log(request.send(json));
+    document.getElementById('show_id').textContent = '面試者ID:' + id;
+    document.getElementById("inputid").hidden = true;
+    document.getElementById("interviewID").hidden = true;
+    document.getElementById("submit").hidden = true;
+    document.getElementById("next").style.display = 'inline';
+}
+
+function nextQlist(){
+    if (count <=18) {
+    count = count+1;
+    stopCount();
+    c=list_t[count]
+    document.getElementById("questions").textContent ='';
+    document.getElementById("questions").append('問題'+(count+1)+':'+list_q[count]);
+    document.getElementById("total_time").textContent ='計時' + list_t[count] + '秒';
+    }
+    
+}
+
+function timedCount(){
+
+    document.getElementById('total_time').textContent='計時'+ c +'秒'
+    if (c == '0'){
+        nextQlist();
+    }
+    else{
+        c=c-1
+        t=setTimeout("timedCount()",1000)
+    }
+    player.record=true;
+}
+
+function stopCount(){
+
+clearTimeout(t)
+
+}
+</script>
+<script>
+        var player = videojs("myVideo", {
+            controls: true,
+            width: 640,
+            height: 480,
+            fluid: false,
+            plugins: {
+                record: {
+                    audio: true,
+                    video: true,
+                    maxLength: 120,
+                    debug: true
+                }
+            }
+        }, function(){
+            // print version information at startup
+            var msg = 'Using video.js ' + videojs.VERSION +
+                ' with videojs-record ' + videojs.getPluginVersion('record') +
+                ' and recordrtc ' + RecordRTC.version;
+            videojs.log(msg);
+        });
+        // error handling
+        player.on('deviceError', function() {
+            console.log('device error:', player.deviceErrorCode);
+        });
+        player.on('error', function(error) {
+            console.log('error:', error);
+            
+        });
+        // user clicked the record button and started recording
+        player.on('startRecord', function() {
+            console.log('started recording!');
+            timedCount();
+        });
+        // user completed recording and stream is available
+        player.on('finishRecord', function() {
+            // the blob object contains the recorded data that
+            // can be downloaded by the user, stored on server etc.
+            console.log('finished recording: ', player.recordedData);
+            
+            var formData = new FormData();
+            formData.append('audiovideo', player.recordedData.video);
+    
+            // Execute the ajax request, in this case we have a very simple PHP script
+            // that accepts and save the uploaded "video" file
+            xhr('/audiovideo', formData, function (fName) {
+                console.log("Video succesfully uploaded !");
+            });
+
+            // Helper function to send 
+            function xhr(url, data, callback) {
+                var request = new XMLHttpRequest();
+                request.onreadystatechange = function () {
+                    if (request.readyState == 4 && request.status == 200) {
+                        callback(location.href + request.responseText);
+                    }
+                };
+                request.open('POST', url);
+                
+                request.send(data);
+            }
+        });
+</script>
+<script>
+var ml4 = {};
+ml4.opacityIn = [0,1];
+ml4.scaleIn = [0.2, 1];
+ml4.scaleOut = 3;
+ml4.durationIn = 800;
+ml4.durationOut = 600;
+ml4.delay = 12000;
+
+var timeline = anime.timeline({loop:1});
+timeline
+    .add({
+    targets: '.ml4 .letters-1',
+    opacity: ml4.opacityIn,
+    scale: ml4.scaleIn,
+    duration: ml4.durationIn
+  }).add({
+    targets: '.ml4 .letters-1',
+    opacity: 0,
+    scale: ml4.scaleOut,
+    duration: ml4.durationOut,
+    easing: "easeInExpo",
+    delay: ml4.delay
+  });
+</script>
+</body>
+</html>

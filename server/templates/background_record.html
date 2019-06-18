@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="description" content="Simplest possible examples of HTML, CSS and JavaScript.">
+    <meta name="author" content="//samdutton.com">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta itemprop="name" content="simpl.info: simplest possible examples of HTML, CSS and JavaScript">
+    <meta itemprop="image" content="/images/icons/icon192.png">
+    <meta id="theme-color" name="theme-color" content="#fff">
+
+    <base target="_blank">
+
+    <title>video</title>
+
+    <link rel="canonical" href="https://simpl.info/mediarecorder" />
+    <link rel="stylesheet" href="../main.css">
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-33848682-1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        window.dataLayer.push(arguments);
+      }
+      gtag('js', new Date());
+      gtag('config', 'UA-33848682-1');
+    </script>
+  </head>
+
+  <body>
+    <div id="container">
+      <video id="gum" autoplay muted style="display:none;"></video>
+      <video id="recorded" style="display:none;"></video>
+
+      <div>
+        <button id="record"></button>
+        <button id="download" disabled></button>
+        <button onclick="successCallback(stream)">a</button>
+      </div>
+    </div>
+  </body>
+  <script>
+      
+      var count=0;
+      var interviewid;
+      var itemid;
+      window.addEventListener("message", function( event ) { 
+         // 把父窗口发送过来的数据显示在子窗口中
+         //console.log(event.data);
+         
+         if (event.data==2)
+         {
+          
+          successCallback1(stream);
+         }else if (event.data==3) {
+          //console.log((event.data+10)*1000);
+          
+          navigator.mediaDevices.getUserMedia(
+          constraints
+          ).then(
+          successCallback,
+          errorCallback
+          );
+         }else if(event.data.length>=11){
+          interviewid=event.data.substr(11);
+          //console.log(interviewid)
+         }else{
+          itemid=event.data;
+          //console.log(itemid)
+         }
+         
+         
+      }, false );
+      
+      var mediaSource = new MediaSource();
+      mediaSource.addEventListener('sourceopen', handleSourceOpen, false);
+      var mediaRecorder;
+      var recordedBlobs;
+      var sourceBuffer;
+      
+      var gumVideo = document.querySelector('video#gum');
+      var recordedVideo = document.querySelector('video#recorded');
+      
+      var recordButton = document.querySelector('button#record');
+      var downloadButton = document.querySelector('button#download');
+      
+
+      downloadButton.onclick = download;
+      
+      //console.log(location.host);
+      // window.isSecureContext could be used for Chrome
+      var isSecureOrigin = location.protocol === 'https:' ||
+        location.host.includes('localhost');
+      if (!isSecureOrigin) {
+        alert('getUserMedia() must be run from a secure origin: HTTPS or localhost.' +
+          '\n\nChanging protocol to HTTPS');
+        location.protocol = 'HTTPS';
+      }
+      
+      var constraints = {
+        audio: true,
+        video: true
+      };
+      
+      function successCallback(stream) {
+        //console.log(times);
+        //console.log('getUserMedia() got stream: ', stream);
+        window.stream = stream;
+        gumVideo.srcObject = stream;
+        startRecording();
+        //console.log(mediaRecorder.state);
+        
+        
+        
+      }
+      
+      function successCallback1(stream) {
+        
+        if (mediaRecorder.state=='recording'){
+          stopRecording();
+          downloadButton.disabled = false;
+          postBlob();
+          successCallback1(stream);
+        }
+      }
+
+
+      function errorCallback(error) {
+        //console.log('navigator.getUserMedia error: ', error);
+      }
+      
+      function handleSourceOpen(event) {
+        //console.log('MediaSource opened');
+        sourceBuffer = mediaSource.addSourceBuffer('video/webm; codecs="vp8"');
+        //console.log('Source buffer: ', sourceBuffer);
+      }
+      
+      function handleDataAvailable(event) {
+        if (event.data && event.data.size > 0) {
+          recordedBlobs.push(event.data);
+        }
+      }
+      
+      function handleStop(event) {
+        //console.log('Recorder stopped: ', event);
+      }
+      
+      // The nested try blocks will be simplified when Chrome 47 moves to Stable
+      function startRecording() {
+        var options = {mimeType: 'video/webm;codecs=vp9', bitsPerSecond: 100000};
+        recordedBlobs = [];
+        try {
+          mediaRecorder = new MediaRecorder(window.stream, options);
+        } catch (e0) {
+          //console.log('Unable to create MediaRecorder with options Object: ', options, e0);
+          try {
+            options = {mimeType: 'video/webm;codecs=vp8', bitsPerSecond: 100000};
+            mediaRecorder = new MediaRecorder(window.stream, options);
+          } catch (e1) {
+            //console.log('Unable to create MediaRecorder with options Object: ', options, e1);
+            try {
+              options = 'video/mp4';
+              mediaRecorder = new MediaRecorder(window.stream, options);
+            } catch (e2) {
+              //console.error('Exception while creating MediaRecorder:', e2);
+              return;
+            }
+          }
+        }
+        //console.log('Created MediaRecorder', mediaRecorder, 'with options', options);
+        downloadButton.disabled = true;
+        mediaRecorder.onstop = handleStop;
+        mediaRecorder.ondataavailable = handleDataAvailable;
+        mediaRecorder.start(10); // collect 10ms of data
+        //console.log('MediaRecorder started', mediaRecorder);
+      }
+      
+      function stopRecording() {
+        mediaRecorder.stop();
+        //console.log('Recorded Blobs: ', recordedBlobs);
+        recordedVideo.controls = true;
+      }
+      
+      function postBlob() {
+        var blob = new Blob(recordedBlobs, {type: 'video/webm'});
+        var url = window.URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        //console.log(a.href);
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', a.href , true);
+        xhr.responseType = 'blob';
+        xhr.onload = function(e) {
+          if (this.status == 200) {
+            form = new FormData(),
+            request = new XMLHttpRequest();
+            form.append("audiovideo",blob,"Capture.webm");
+            request.open("POST","/audiovideo",true);
+            request.setRequestHeader('interviewid', interviewid)
+            request.setRequestHeader('itemid', itemid)
+            //console.log(form);
+            request.send(form);
+            //console.log(request.response)
+          }
+        };
+        xhr.send();
+        
+      }
+  </script>
+</html>
